@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "nodemon server.js",
+    "start": "node server.js",
     "build": "echo 'Build completed'",
     "test": "jest --detectOpenHandles",
     "test:watch": "jest --watch --detectOpenHandles",

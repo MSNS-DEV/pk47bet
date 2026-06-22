@@ -8,8 +8,8 @@ import { toast } from 'react-hot-toast';
 import { BetType } from '@/types/roulette';
 import Navbar from '@/components/home/Navbar';
 
-const RouletteGame = ({ initialGame }: { initialGame: RouletteGameWithBets }) => {
-  const [game, setGame] = useState(initialGame);
+const RouletteGame = () => {
+  const [game, setGame] = useState<RouletteGameWithBets | null>(null);
   const [betAmount, setBetAmount] = useState(10);
   const [selectedBet, setSelectedBet] = useState<{
     type: BetType;
@@ -21,10 +21,28 @@ const RouletteGame = ({ initialGame }: { initialGame: RouletteGameWithBets }) =>
   const [isSpinning, setIsSpinning] = useState(false);
   
   const socketRef = useRef<WebSocket | null>(null);
-  const gameIdRef = useRef<string | null>(initialGame?.id ?? null);
+  const gameIdRef = useRef<string | null>(null);
 
-  // Setup WebSocket connection
+  // Fetch initial game
   useEffect(() => {
+    const fetchGame = async () => {
+      try {
+        const initialGame = await getCurrentGame();
+        setGame(initialGame);
+        gameIdRef.current = initialGame.id;
+      } catch (err) {
+        console.error("Failed to load initial game:", err);
+        toast.error("Failed to load game");
+      }
+    };
+    fetchGame();
+  }, []);
+
+  // Setup WebSocket connection once game is loaded
+  useEffect(() => {
+    const gameId = gameIdRef.current;
+    if (!gameId) return;
+
     // Create WebSocket connection
     const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL!);
     socketRef.current = ws;
@@ -34,7 +52,7 @@ const RouletteGame = ({ initialGame }: { initialGame: RouletteGameWithBets }) =>
       // Join the current game room
       ws.send(JSON.stringify({ 
         action: 'join-game', 
-        gameId: gameIdRef.current 
+        gameId: gameId
       }));
     };
 
@@ -60,30 +78,39 @@ const RouletteGame = ({ initialGame }: { initialGame: RouletteGameWithBets }) =>
           break;
           
         case 'BET_PLACED':
-          setGame(prev => ({
-            ...prev,
-            bets: [...prev.bets, data.data]
-          }));
+          setGame(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              bets: [...prev.bets, data.data]
+            };
+          });
           break;
           
         case 'SPIN_STARTED':
-          setGame(prev => ({
-            ...prev,
-            status: 'SPINNING'
-          }));
+          setGame(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              status: 'SPINNING'
+            };
+          });
           setIsSpinning(true);
           break;
           
         case 'GAME_RESULT':
-          setGame(prev => ({
-            ...prev,
-            status: 'COMPLETED',
-            result: data.data.result,
-            bets: prev.bets.map(bet => ({
-              ...bet,
-              payout: data.data.bets.find((b: any) => b.id === bet.id)?.payout
-            }))
-          }));
+          setGame(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              status: 'COMPLETED',
+              result: data.data.result,
+              bets: prev.bets.map(bet => ({
+                ...bet,
+                payout: data.data.bets.find((b: any) => b.id === bet.id)?.payout
+              }))
+            };
+          });
           setIsSpinning(false);
           break;
       }
@@ -102,7 +129,7 @@ const RouletteGame = ({ initialGame }: { initialGame: RouletteGameWithBets }) =>
         ws.close();
       }
     };
-  }, []);
+  }, [game?.id]);
 
   // Handle new game creation after current game ends
   useEffect(() => {
@@ -131,8 +158,8 @@ const RouletteGame = ({ initialGame }: { initialGame: RouletteGameWithBets }) =>
     }
   }, [game?.status]);
 
- 
   const handlePlaceBet = async () => {
+    if (!game) return;
     if (selectedBet.numbers.length === 0) {
       toast.error('Please select a bet first');
       return;
@@ -179,6 +206,15 @@ const RouletteGame = ({ initialGame }: { initialGame: RouletteGameWithBets }) =>
 
   // Check if spin button should be disabled
   const isSpinDisabled = game?.status !== 'WAITING' || game?.bets.length === 0 || isSpinning;
+
+  if (!game) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center gap-4">
+        <span className="w-10 h-10 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-gray-400">Loading Game Arena...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white py-10 ">

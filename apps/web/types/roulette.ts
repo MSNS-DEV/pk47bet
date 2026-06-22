@@ -11,7 +11,9 @@ export type BetType =
   | 'EVEN' 
   | 'DOZEN' 
   | 'COLUMN' 
-  | 'BASKET';
+  | 'BASKET'
+  | 'LOW'
+  | 'HIGH';
 
 export interface RouletteBet {
   id: string;

@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
+import { BetType } from '@/types/roulette';
 
 // Types
-type BetType = 'STRAIGHT' | 'SPLIT' | 'STREET' | 'CORNER' | 'LINE' | 'RED' | 'BLACK' | 'ODD' | 'EVEN' | 'DOZEN' | 'COLUMN' | 'LOW' | 'HIGH';
 type NumberColor = 'red' | 'black' | 'green';
 
 interface RouletteNumber {
